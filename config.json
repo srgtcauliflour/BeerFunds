@@ -1,0 +1,20 @@
+{
+  "token":"BeerFunds",
+  "prefix":":vb:", # use something like ! , . ~ ` ?
+  "coin": "BeerFunds",
+  "symbol": "BEER", 
+  "tip_amp_emoji": "Fund",
+  "tip_any_emoji": "BuyBeer",
+  "tip_any_amount": 100,
+  # faucet address if configured
+  "faucet": "BEERv14M1Q9223QdWMmJyNeY8oMjXs5TGP9hDc3GJFsUVdXtaemn1mLKA25Hz9PLu89uvDafx9A93jW2i27E5Q3a7rn8P2fLuVA", # url to faucet
+  "price_source": "TradeOgre", # name to display in price command
+  "price_endpoint": "https://tradeogre.com/api/v1/ticker/BTC-NAH", # api price source
+  "units": 9, # number of decimal places
+  "daemon_host": "127.0.0.1",
+  "daemon_port": "11898",
+  "rpc_password":"beersallround",
+  "rpc_host": "beerfunds",
+  "rpc_port":"8070"
+}
+
