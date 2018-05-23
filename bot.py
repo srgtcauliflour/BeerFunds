@@ -16,7 +16,7 @@ from utils import config, format_hash, gen_paymentid, rpc, daemon, \
 HEADERS = {'Content-Type': 'application/json'}
 
 # SETUP ###
-engine = create_engine('sqlite:///trtl.db')
+engine = create_engine('sqlite:///BEERFund.db')
 Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 session = Session()
@@ -43,8 +43,8 @@ async def wallet_watcher():
             if not balance:  # don't do for withdrawal
                 return
 
-            good_embed = discord.Embed(title="Deposit Recieved!",colour=discord.Colour(0xD4AF37))
-            good_embed.description = "Your deposit of {} {} has now been credited.".format(tx.amount/config['units'], config['symbol'])
+            good_embed = discord.Embed(title="Deposit Recieved!",colour=discord.Colour(0xFF900))
+            good_embed.description = "You have Sent {} {} BeerFunds.".format(tx.amount/config['units'], config['symbol'])
             print("TRANSACTION PID IS: " + tx.paymentid)
             good_embed.add_field(name="New Balance", value="{0:,.2f}".format(balance.amount/config['units']))
             user = await client.get_user_info(str(balance.userid))
@@ -67,10 +67,10 @@ async def on_ready():
 @client.command()
 async def faucet():
     """ Returns balance in the faucet """
-    resp = requests.get("https://faucet.{}.me/balance".format(config['symbol']))
+    resp = requests.get("https://127.0.0.1/{}/balance".format(config['symbol']))
     desc = "```Donations: {}```".format(config['faucet'])
     em = discord.Embed(title = "The faucet has {:,} {} left".format(int(float(resp.json()['available'])), config['symbol']), description = desc)
-    em.url = "https://faucet.{}.me".format(config['symbol'])
+    em.url = "https://127.0.0.1".format(config['symbol'])
     await client.say(embed = em)
 
 
@@ -84,7 +84,7 @@ async def price(ctx, exchange=None):
         print(e)
         pass
     err_embed = discord.Embed(title=":x:Error:x:", colour=discord.Colour(0xf44242))
-    coindata = requests.get("https://tradeogre.com/api/v1/ticker/BTC-TRTL")
+    coindata = requests.get("https://tradeogre.com/api/v1/ticker/BTC-NAH")
     btc = requests.get("https://www.bitstamp.net/api/ticker/")
     try:
         to_json = coindata.json()
@@ -92,17 +92,17 @@ async def price(ctx, exchange=None):
         err_embed.description = "The {} API is down".format(config['price_source'])
         await client.say(embed = err_embed)
         return
-    coindata_embed = discord.Embed(title = "Current Price of TRTL: {}".format(config['price_source']),
+    coindata_embed = discord.Embed(title = "Current Price of BEER: {}".format(config['price_source']),
         url = config['price_endpoint'])
     coindata_embed.add_field(name="Low", value="{0:,.0f} sats".format(round(float(coindata.json()['low'])*100000000)), inline=True)
     coindata_embed.add_field(name="Current", value="{0:,.0f} sats".format(round(float(coindata.json()['price'])*100000000)), inline=True)
     coindata_embed.add_field(name="High", value="{0:,.0f} sats".format(round(float(coindata.json()['high'])*100000000)), inline=True)
 
-    coindata_embed.add_field(name="{}-USD".format(config['symbol']),
-        value="${0:,.4f} USD".format(float(coindata.json()['price'])*float(btc.json()['last'])), inline=True)
+    coindata_embed.add_field(name="{}-AUD".format(config['symbol']),
+        value="${0:,.4f} AUD".format(float(coindata.json()['price'])*float(btc.json()['last'])), inline=True)
 
     coindata_embed.add_field(name="Volume", value="{:,.2f} BTC".format(float(coindata.json()['volume'])), inline=True)
-    coindata_embed.add_field(name="BTC-USD", value="${0:,.2f} USD".format(float(btc.json()['last'])), inline=True)
+    coindata_embed.add_field(name="BTC-AUD", value="${0:,.2f} AUD".format(float(btc.json()['last'])), inline=True)
     await client.say(embed=coindata_embed)
 
 
@@ -117,7 +117,7 @@ async def mcap():
 
     btc = requests.get("https://www.bitstamp.net/api/ticker/")
     supply = get_supply()
-    trtl = requests.get("https://tradeogre.com/api/v1/ticker/BTC-TRTL")
+    trtl = requests.get("https://tradeogre.com/api/v1/ticker/BTC-NAH")
     try:
         trtl_json = trtl.json()
         btc_json = btc.json()
@@ -125,7 +125,7 @@ async def mcap():
         await client.say("Unable to get market cap!")
         return
     mcap = float(trtl.json()['price'])*float(btc.json()['last'])*supply
-    await client.say("{0}'s Marketcap is **${1:,.2f}** USD".format(config['coin'], mcap))
+    await client.say("{0}'s Marketcap is **${1:,.2f}** AUD".format(config['coin'], mcap))
 
 
 ### NETWORK COMMANDS ###
@@ -167,19 +167,19 @@ async def registerwallet(ctx, address):
     err_embed = discord.Embed(title=":x:Error:x:", colour=discord.Colour(0xf44242))
     good_embed = discord.Embed(title="{}'s Wallet".format(ctx.message.author.name),colour=discord.Colour(0xD4AF37))
     if address is None:
-        err_embed.description = "Please provide an address"
+        err_embed.description = "Please provide a BeerFund address"
         await client.send_message(ctx.message.author, embed = err_embed)
         return
 
     exists = session.query(Wallet).filter(Wallet.userid == ctx.message.author.id).first()
     addr_exists = session.query(Wallet).filter(Wallet.address == address).first()
     if exists:
-        good_embed.title = "Your wallet exists!".format(exists.address)
+        good_embed.title = "Your BeerFund already exists!".format(exists.address)
         good_embed.description = "```{}``` use `{}updatewallet <addr>` to change".format(exists.address, config['prefix'])
         await client.send_message(ctx.message.author, embed = good_embed)
         return
     if addr_exists:
-        err_embed.description = "Address already registered by another user!"
+        err_embed.description = "BeerFund already registered by another user!"
         await client.send_message(ctx.message.author, embed = err_embed)
         return
 
@@ -187,7 +187,7 @@ async def registerwallet(ctx, address):
         w = Wallet(address, ctx.message.author.id,ctx.message.id)
         session.add(w)
         session.commit()
-        good_embed.title = "Successfully registered your wallet"
+        good_embed.title = "Successfully registered your BeerFund"
         good_embed.description = "```{}```".format(address)
         await client.send_message(ctx.message.author, embed = good_embed)
 
@@ -200,38 +200,38 @@ async def registerwallet(ctx, address):
             balance.paymentid = pid
         session.commit()
         tipjar_addr = rpc.getAddresses()['addresses'][0]
-        good_embed.title = "Your Tipjar Info"
-        good_embed.description = "Deposit {} to start tipping! ```transfer 3 {} <amount> -p {}```".format(config['symbol'], tipjar_addr, pid)
+        good_embed.title = "Your BeerFund Info"
+        good_embed.description = "Deposit {} to start Funding! ```transfer 3 {} <amount> -p {}```".format(config['symbol'], tipjar_addr, pid)
         balance = session.query(TipJar).filter(TipJar.paymentid == pid).first()
         await client.send_message(ctx.message.author, embed = good_embed)
         return
     elif len(address) > 99:
-        err_embed.description = "Your wallet must be 99 characeters long, your entry was too long"
+        err_embed.description = "Your BeerFund must be 99 characeters long, your entry was too long"
     elif len(address) < 99:
-        err_embed.description = "Your wallet must be 99 characeters long, your entry was too short"
+        err_embed.description = "Your BeerFund must be 99 characeters long, your entry was too short"
     await client.say(embed = err_embed)
 
 
 @client.command(pass_context=True)
 async def updatewallet(ctx, address):
-    """ Updates your wallet address """
+    """ Updates your BeerFund address """
 
     err_embed = discord.Embed(title=":x:Error:x:", colour=discord.Colour(0xf44242))
 
     if address == None:
-        err_embed.description = "Please provide an address!"
+        err_embed.description = "Please provide an BeerFund address!"
         await client.send_message(ctx.message.author, embed=err_embed)
         return
 
     address = address.strip()
-    good_embed = discord.Embed(title="{}'s Updated Wallet".format(ctx.message.author.name),colour=discord.Colour(0xD4AF37))
+    good_embed = discord.Embed(title="{}'s Updated BeerFund".format(ctx.message.author.name),colour=discord.Colour(0xD4AF37))
     exists = session.query(Wallet).filter(Wallet.userid == ctx.message.author.id).first()
     if not exists:
-        err_embed.description = "You haven't registered a wallet!"
+        err_embed.description = "You haven't registered a BeerFund!"
 
     addr_exists = session.query(Wallet).filter(Wallet.address == address).first()
     if addr_exists:
-        err_embed.description = "Address already registered by another user!"
+        err_embed.description = "BeerFund already registered by another user!"
         await client.send_message(ctx.message.author, embed = err_embed)
         return
     elif exists and len(address) == 99:
@@ -240,14 +240,14 @@ async def updatewallet(ctx, address):
         exists.address = address
         pid = gen_paymentid(address)
         old_balance.paymentid = pid
-        good_embed.title = "Successfully updated your wallet"
+        good_embed.title = "Successfully updated your BeerFund"
         good_embed.description = "```{}```".format(address)
         session.commit()
         await client.send_message(ctx.message.author, embed = good_embed)
 
         tipjar_addr = rpc.getAddresses()['addresses'][0]
         good_embed.title = "Your Tipjar Info"
-        good_embed.description = "Deposit {} to start tipping! ```transfer 3 {} <amount> -p {}```".format(config['symbol'], tipjar_addr, pid)
+        good_embed.description = "Deposit {} to start Funding! ```transfer 3 {} <amount> -p {}```".format(config['symbol'], tipjar_addr, pid)
         await client.send_message(ctx.message.author, embed = good_embed)
 
         good_embed.title = "Balance Update"
@@ -256,15 +256,15 @@ async def updatewallet(ctx, address):
         await client.send_message(ctx.message.author, embed = good_embed)
         return
     elif len(address) > 99:
-        err_embed.description = "Your wallet must be 99 characeters long, your entry was too long"
+        err_embed.description = "Your BeerFund must be 99 characeters long, your entry was too long"
     elif len(address) < 99:
-        err_embed.description = "Your wallet must be 99 characeters long, your entry was too short"
+        err_embed.description = "Your BeerFund must be 99 characeters long, your entry was too short"
     await client.say(embed=err_embed)
 
 
 @client.command(pass_context=True)
 async def wallet(ctx, user: discord.User=None):
-    """ Returns specified user's wallet address or your own if None """
+    """ Returns specified user's BeerFund address or your own if None """
 
     err_embed = discord.Embed(title=":x:Error:x:", colour=discord.Colour(0xf44242))
     good_embed = discord.Embed(colour=discord.Colour(0xD4AF37))
@@ -273,16 +273,16 @@ async def wallet(ctx, user: discord.User=None):
         if not exists:
             err_embed.description = "You haven't registered a wallet or specified a user!"
         else:
-            good_embed.title = "Your wallet"
-            good_embed.description = "Here's your wallet {}! ```{}```".format(ctx.message.author.mention, exists.address)
+            good_embed.title = "Your BeerFund"
+            good_embed.description = "Here's your BeerFund {}! ```{}```".format(ctx.message.author.mention, exists.address)
             await client.send_message(ctx.message.author, embed = good_embed)
             return
     else:
         exists = session.query(Wallet).filter(Wallet.userid == user.id).first()
         if not exists:
-            err_embed.description = "{} hasn't registered a wallet!".format(user.name)
+            err_embed.description = "{} hasn't registered a BeerFund!".format(user.name)
         else:
-            good_embed.title = "{}'s wallet".format(user.name)
+            good_embed.title = "{}'s BeerFund".format(user.name)
             good_embed.description = "```{}```".format(exists.address)
             await client.send_message(ctx.message.author, embed = good_embed)
             return
@@ -291,14 +291,14 @@ async def wallet(ctx, user: discord.User=None):
 
 @client.command(pass_context=True)
 async def deposit(ctx, user: discord.User=None):
-    """ PMs your deposit information for the tipjar """
+    """ PMs your deposit information for the BeerFund """
     err_embed = discord.Embed(title=":x:Error:x:", colour=discord.Colour(0xf44242))
     good_embed = discord.Embed(title="Your Tipjar Info")
     exists = session.query(Wallet).filter(Wallet.userid == ctx.message.author.id).first()
     tipjar_addr = rpc.getAddresses()['addresses'][0]
     if exists:
         pid = gen_paymentid(exists.address)
-        good_embed.description = "Deposit {} to start tipping! ```transfer 3 {} <amount> -p {}```".format(config['symbol'], tipjar_addr, pid)
+        good_embed.description = "Deposit {} to start Funding! ```transfer 3 {} <amount> -p {}```".format(config['symbol'], tipjar_addr, pid)
         balance = session.query(TipJar).filter(TipJar.paymentid == pid).first()
         if not balance:
             t = TipJar(pid, ctx.message.author.id, 0)
@@ -306,14 +306,14 @@ async def deposit(ctx, user: discord.User=None):
             session.commit()
         await client.send_message(ctx.message.author, embed = good_embed)
     else:
-        err_embed.description = "You haven't registered a wallet!"
-        err_embed.add_field(name="Help", value="Use `{}registerwallet <addr>` before trying to tip!".format(config['prefix']))
+        err_embed.description = "You haven't registered a BeerFund!"
+        err_embed.add_field(name="Help", value="Use `{}registerwallet <addr>` before trying to Fund!".format(config['prefix']))
         await client.say(embed=err_embed)
 
 
 @client.command(pass_context=True)
 async def balance(ctx, user: discord.User=None):
-    """ PMs your tipjar balance """
+    """ PMs your BeerFund balance """
     err_embed = discord.Embed(title=":x:Error:x:", colour=discord.Colour(0xf44242))
     good_embed = discord.Embed(title="Your Tipjar Balance is")
     exists = session.query(Wallet).filter(Wallet.userid == ctx.message.author.id).first()
@@ -328,8 +328,8 @@ async def balance(ctx, user: discord.User=None):
             good_embed.description = "`{0:,.2f}` {1}".format(balance.amount / config['units'], config['symbol'])
             await client.send_message(ctx.message.author, embed=good_embed)
     else:
-        err_embed.description = "You haven't registered a wallet!"
-        err_embed.add_field(name="Help", value="Use `{}registerwallet <addr>` before trying to tip!".format(config['prefix']))
+        err_embed.description = "You haven't registered a BeerFund!"
+        err_embed.add_field(name="Help", value="Use `{}registerwallet <addr>` before trying to Fund!".format(config['prefix']))
         await client.say(embed=err_embed)
 
 
@@ -409,9 +409,9 @@ async def _tip(ctx, amount,
     """ Tips a user <amount> of coin """
 
     err_embed = discord.Embed(title=":x:Error:x:", colour=discord.Colour(0xf44242))
-    good_embed = discord.Embed(title="You were tipped!", colour=discord.Colour(0xD4AF37))
-    request_desc = "Register with `{}registerwallet <youraddress>` to get started! To create a wallet head to https://turtlecoin.lol/wallet/".format(config['prefix'])
-    request_embed = discord.Embed(title="{} wants to tip you".format(ctx.message.author.name), description=request_desc)
+    good_embed = discord.Embed(title="You've Got Funds!", colour=discord.Colour(0xD4AF37))
+    request_desc = "Register with `{}registerwallet <youraddress>` to get started! To create a BeerFund head to https://strayacoin.foundation/BEER/wallet/".format(config['prefix'])
+    request_embed = discord.Embed(title="{} wants to Fund you".format(ctx.message.author.name), description=request_desc)
 
     if not sender:  # regular tip
         sender = ctx.message.author
@@ -436,7 +436,7 @@ async def _tip(ctx, amount,
     self_exists = session.query(Wallet).filter(Wallet.userid == sender.id).first()
 
     if not self_exists:
-        err_embed.description = "You haven't registered a wallet!"
+        err_embed.description = "You haven't registered a BeerFund!"
         err_embed.add_field(name="Help", value="Use `{}registerwallet <addr>` before trying to tip!".format(config['prefix']))
         await client.send_message(sender, embed=err_embed)
         return False
@@ -447,14 +447,14 @@ async def _tip(ctx, amount,
         t = TipJar(pid, sender.id, 0)
         session.add(t)
         session.commit()
-        err_embed.description = "You are now registered, please `{}deposit` to tip".format(config['prefix'])
+        err_embed.description = "You are now registered, please `{}deposit` to Fund".format(config['prefix'])
         await client.send_message(sender, embed=err_embed)
         return False
 
     if balance.amount < 0:
         balance.amount = 0
         session.commit()
-        err_embed.description = "Your balance was negative!"
+        err_embed.description = "You Got no Funds Mate!"
         await client.send_message(sender, embed=err_embed)
 
         madk = discord.utils.get(client.get_all_members(), id='200823661928644617')
@@ -465,7 +465,7 @@ async def _tip(ctx, amount,
         return False
 
     if ((len(tipees)*(amount))+fee) > balance.amount:
-        err_embed.description = "Your balance is too low! Amount + Fee = `{}` {}".format(((len(tipees)*(amount))+fee) / config['units'], config['symbol'])
+        err_embed.description = "Mate, Your too low on Funds! Amount + Fee = `{}` {}".format(((len(tipees)*(amount))+fee) / config['units'], config['symbol'])
         await client.add_reaction(ctx.message, "\u274C")
         await client.send_message(sender, embed=err_embed)
         return False
@@ -511,7 +511,7 @@ async def _tip(ctx, amount,
                 len(actual_users),
                 result['transactionHash']))
     good_embed.url = (
-        "https://blocks.turtle.link/?hash={}#blockchain_transaction"
+        "https://strayacoin.foundation/BEER/?hash={}#blockchain_transaction"
         .format(result['transactionHash']))
 
     good_embed.add_field(name="New Balance", value="`{:0,.2f}` {}".format(balance.amount / config['units'], config['symbol']))
@@ -522,7 +522,7 @@ async def _tip(ctx, amount,
         pass
 
     for user in actual_users:
-        good_embed = discord.Embed(title="You were tipped!", colour=discord.Colour(0xD4AF37))
+        good_embed = discord.Embed(title="You were Funded!", colour=discord.Colour(0xD4AF37))
         good_embed.description = (
             "{0} sent you `{1:,.2f}` {2} with Transaction Hash ```{3}```"
             .format(sender.mention,
@@ -530,7 +530,7 @@ async def _tip(ctx, amount,
                     config['symbol'],
                     result['transactionHash']))
         good_embed.url = (
-            "https://blocks.turtle.link/?hash={}#blockchain_transaction"
+            "https://strayacoin.foundation/BEER/?hash={}#blockchain_transaction"
             .format(result['transactionHash']))
         try:
             await client.send_message(user, embed=good_embed)
